@@ -16,7 +16,7 @@ unsigned long lastSensorRead = 0;
 long currentDistance = 0;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode(trigPin, OUTPUT); pinMode(echoPin, INPUT);
   pinMode(motorL_PWM, OUTPUT); pinMode(motorL_IN1, OUTPUT); pinMode(motorL_IN2, OUTPUT);
   pinMode(motorR_PWM, OUTPUT); pinMode(motorR_IN3, OUTPUT); pinMode(motorR_IN4, OUTPUT);
@@ -51,10 +51,10 @@ void loop() {
 
   // 3. Action Logic
   if (mode == 1) { // Wall Follow Logic
-    int wallSpeed = 100; 
+    int wallSpeed = 66; 
     
-    // Wall Threshold: 7cm
-    if (currentDistance < 7 && currentDistance != 0) {
+    // Wall Threshold: 
+    if (currentDistance < 50 && currentDistance != 0) {
        moveRobot(0, wallSpeed); // Turn Left
     } 
     else {
@@ -63,8 +63,8 @@ void loop() {
   } 
   else if (mode == 2) { // Follow Me Logic
     
-    // REVISION: Only move if object is strictly between 5cm and 10cm
-    if (currentDistance >= 5 && currentDistance <= 10) {
+    // REVISION: Only move if object is strictly between set values
+    if (currentDistance >= 10 && currentDistance <= 17) {
       moveRobot(baseSpeed, baseSpeed);
     }
     else {
@@ -87,6 +87,7 @@ long getDistance() {
 
 void moveRobot(int left, int right) {
   // Positive = Forward, Negative = Backward
+  // left = left * 0.9995; Motor balance
   digitalWrite(motorL_IN1, left < 0);  
   digitalWrite(motorL_IN2, left > 0);  
   analogWrite(motorL_PWM, abs(left));
