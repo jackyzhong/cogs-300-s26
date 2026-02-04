@@ -3,7 +3,7 @@
 char ssid[] = "RobotControl";
 char pass[] = "12345678";
 WiFiServer server(80);
-WiFiClient client; // Keep the client global to maintain connection
+WiFiClient client; 
 
 // Pins
 const int trigPin = 9, echoPin = 10;
@@ -12,7 +12,7 @@ const int motorR_PWM = 6, motorR_IN3 = 4, motorR_IN4 = 7;
 
 int mode = 0; 
 int baseSpeed = 80; 
-unsigned long lastSensorRead = 0; // For non-blocking timer
+unsigned long lastSensorRead = 0; 
 long currentDistance = 0;
 
 void setup() {
@@ -26,52 +26,54 @@ void setup() {
 }
 
 void loop() {
-  // 1. Check for NEW clients if we don't have one
-  if (!client) {
-    client = server.available();
-  }
+  // 1. Connection Logic
+  if (!client) client = server.available();
 
-  // 2. If we have a client and they sent data
   if (client && client.connected()) {
     if (client.available()) {
-      String command = "";
-      // Read until a newline character or timeout
-      command = client.readStringUntil('\n'); 
-      command.trim();      // Remove whitespace
+      String command = client.readStringUntil('\n'); 
+      command.trim();      
       command.toUpperCase(); 
 
       if (command.indexOf("WALL")   != -1) mode = 1;
       if (command.indexOf("FOLLOW") != -1) mode = 2;
       if (command.indexOf("STOP")   != -1) mode = 0;
       
-      // Send feedback but DO NOT STOP the client
       client.println(currentDistance); 
     }
   }
 
-  // 3. Sensor Logic - ONLY run if needed and use a Timer (Non-blocking-ish)
-  // Only check sensor every 100ms, not every loop
+  // 2. Sensor Logic (Every 100ms)
   if ((mode == 1 || mode == 2) && (millis() - lastSensorRead > 100)) {
      currentDistance = getDistance();
      lastSensorRead = millis();
   }
 
-  // 4. Action Logic
-  if (mode == 1) { // Wall Avoidance
-    if (currentDistance < 15 && currentDistance != 0) moveRobot(-baseSpeed, baseSpeed);
-    else moveRobot(baseSpeed, baseSpeed);
+  // 3. Action Logic
+  if (mode == 1) { // Wall Follow Logic
+    int wallSpeed = 100; 
+    
+    // Wall Threshold: 7cm
+    if (currentDistance < 7 && currentDistance != 0) {
+       moveRobot(0, wallSpeed); // Turn Left
+    } 
+    else {
+      moveRobot(wallSpeed, wallSpeed); // Forward
+    }
   } 
-  else if (mode == 2) { // Follow
-    if (currentDistance == 0) stopMotors(); // Safety if sensor fails
-    else if (currentDistance > 20) moveRobot(baseSpeed, baseSpeed);
-    else if (currentDistance < 12) moveRobot(-baseSpeed, -baseSpeed);
-    else stopMotors();
+  else if (mode == 2) { // Follow Me Logic
+    
+    // REVISION: Only move if object is strictly between 5cm and 10cm
+    if (currentDistance >= 5 && currentDistance <= 10) {
+      moveRobot(baseSpeed, baseSpeed);
+    }
+    else {
+      stopMotors();
+    }
   } 
   else {
     stopMotors();
   }
-  
-  // Removed delay(30) to make steering more responsive
 }
 
 long getDistance() {
@@ -79,14 +81,18 @@ long getDistance() {
   digitalWrite(trigPin, HIGH); delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
   long duration = pulseIn(echoPin, HIGH, 30000); 
-  if (duration == 0) return 999; // Return "far" if timeout
+  if (duration == 0) return 999; 
   return duration * 0.034 / 2;
 }
 
 void moveRobot(int left, int right) {
-  digitalWrite(motorL_IN1, left > 0); digitalWrite(motorL_IN2, left < 0);
+  // Positive = Forward, Negative = Backward
+  digitalWrite(motorL_IN1, left < 0);  
+  digitalWrite(motorL_IN2, left > 0);  
   analogWrite(motorL_PWM, abs(left));
-  digitalWrite(motorR_IN3, right > 0); digitalWrite(motorR_IN4, right < 0);
+  
+  digitalWrite(motorR_IN3, right < 0); 
+  digitalWrite(motorR_IN4, right > 0); 
   analogWrite(motorR_PWM, abs(right));
 }
 
