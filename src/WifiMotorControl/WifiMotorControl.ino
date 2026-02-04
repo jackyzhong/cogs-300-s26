@@ -27,7 +27,7 @@ void setup() {
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(2000);
 
   // *** CHANGED: Creating Access Point ***
